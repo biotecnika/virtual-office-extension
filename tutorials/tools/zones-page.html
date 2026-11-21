@@ -1,0 +1,76 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Inter;font-weight:400;src:url(fonts/inter-latin-400-normal.woff2)}
+@font-face{font-family:Inter;font-weight:600;src:url(fonts/inter-latin-600-normal.woff2)}
+@font-face{font-family:Inter;font-weight:700;src:url(fonts/inter-latin-700-normal.woff2)}
+@font-face{font-family:'Space Grotesk';font-weight:700;src:url(fonts/space-grotesk-latin-700-normal.woff2)}
+*{box-sizing:border-box}
+body{margin:0;width:1280px;height:720px;overflow:hidden;background:#F4F3EF;font-family:Inter,sans-serif;color:#1B1F24}
+.top{position:absolute;left:48px;top:30px;right:48px;display:flex;align-items:center;gap:12px}
+.kick{font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B5650C}
+h1{margin:4px 0 0;font-family:'Space Grotesk',Inter;font-size:38px}
+.stage{position:absolute;left:48px;top:120px;display:flex;gap:44px}
+.gridwrap{position:relative;width:462px;height:462px}
+.grid{display:grid;grid-template-columns:repeat(7,66px);border-radius:4px}
+.c{width:66px;height:66px;border-style:solid;border-color:#1B1F24;display:flex;align-items:center;justify-content:center;position:relative;transition:none}
+.c .x{font-size:24px;font-weight:600;color:#5C5F66}
+.c.dim{filter:saturate(.25) brightness(1.08)}
+.c.glow{box-shadow:inset 0 0 0 4px #1864AB}
+.band{position:absolute;border:4px solid #1864AB;border-radius:6px;background:rgba(24,100,171,.10);pointer-events:none}
+.side{width:640px;display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.rule{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #E3E1DA;border-radius:14px;padding:14px 16px;font-size:20px;line-height:1.35;opacity:.28}
+.rule.on{opacity:1}.rule.now{border-color:#1864AB;box-shadow:0 0 0 3px rgba(24,100,171,.18)}
+.rule b{display:block}
+.num{width:30px;height:30px;border-radius:50%;background:#1B1F24;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none;margin-top:1px}
+.btns{display:flex;gap:10px}.btn{height:48px;padding:0 20px;border-radius:10px;border:1px solid #D0CEC6;background:#fff;font:600 18px Inter;display:flex;align-items:center}
+.btn.press{background:#1B1F24;color:#fff;border-color:#1B1F24}
+.badge{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:999px;background:#FFF4E0;color:#B5650C;font-weight:700;font-size:16px}
+.win{background:#EBFBEE;border:1px solid #B2F2BB;color:#1E6B30;border-radius:14px;padding:14px 16px;font-size:20px;font-weight:600}
+.board{background:#fff;border:1px solid #E3E1DA;border-radius:14px;padding:12px 16px;font-size:18px}
+.board div{display:flex;justify-content:space-between;padding:5px 0}
+.cap{position:absolute;left:48px;right:48px;bottom:26px;min-height:64px;background:rgba(27,31,36,.92);color:#fff;border-radius:14px;padding:14px 22px;font-size:23px;line-height:1.35;font-weight:600;display:flex;align-items:center}
+.cursor{position:absolute;width:30px;height:30px;pointer-events:none;z-index:9}
+.ripple{position:absolute;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;border:4px solid #1864AB;opacity:.7;z-index:8}
+.tag{position:absolute;white-space:nowrap;background:#C92A2A;color:#fff;font-weight:700;font-size:16px;padding:6px 12px;border-radius:8px;z-index:7}
+</style></head><body>
+<div class="top"><div><div class="kick">Virtual Office · Game zone · Daily puzzle</div><h1>How to play: Zones</h1></div></div>
+<div class="stage"><div class="gridwrap" id="gw"><div class="grid" id="grid"></div></div><div class="side" id="side"></div></div>
+<div class="cap" id="cap"></div>
+<script src="gamelogic.js"></script>
+<script>
+var Z = GameLogic.zones(424242), N = Z.n;
+var COL = ['#FFD8A8','#A5D8FF','#B2F2BB','#FCC2D7','#FFEC99','#D0BFFF','#99E9F2'];
+var FLASK = function (red) { var c = red ? '#C92A2A' : '#1B1F24'; return '<svg width="30" height="30" viewBox="0 0 24 24"><path d="M9 3 h6 M10 3 v6 l-5 9 a2 2 0 0 0 2 3 h10 a2 2 0 0 0 2 -3 l-5 -9 V3" fill="'+c+'" stroke="'+c+'" stroke-width="1.6" stroke-linejoin="round"/></svg>'; };
+var RULES = [['One flask per row, column and zone','Each row, each column and each coloured zone holds exactly one flask.'],['Flasks never touch','Not side by side, and not diagonally at a corner.'],['Click to mark, click again to place','Once for a cross, twice for a flask, a third time to clear.']];
+window.render = function (s) {
+  // s: {marks:{i:1|2}, red:[i], dim:bool, zone:k, row:r, col:c, rules:n, ruleNow:k, cursor:i|'hint', click:bool, cap:'', side:'rules'|'hint'|'win', tags:[[i,text]]}
+  var g = '';
+  for (var i = 0; i < N*N; i++) {
+    var y = Math.floor(i/N), x = i%N, z = Z.regions[i];
+    var bt = (y===0||Z.regions[i-N]!==z)?3:1, bl=(x===0||Z.regions[i-1]!==z)?3:1, br=x===N-1?3:0, bb=y===N-1?3:0;
+    var m = (s.marks||{})[i], red = (s.red||[]).indexOf(i) >= 0;
+    var dim = (s.zone != null && z !== s.zone) || (s.dimAll && !m);
+    g += '<div class="c'+(dim?' dim':'')+'" style="background:'+COL[z]+';border-width:'+bt+'px '+br+'px '+bb+'px '+bl+'px">'+(m===2?FLASK(red):m===1?'<span class="x">×</span>':'')+'</div>';
+  }
+  document.getElementById('grid').innerHTML = g;
+  var gw = document.getElementById('gw'); gw.querySelectorAll('.band,.cursor,.ripple,.tag').forEach(function(e){e.remove();});
+  if (s.row != null) gw.insertAdjacentHTML('beforeend','<div class="band" style="left:-6px;top:'+(s.row*66-6)+'px;width:474px;height:78px"></div>');
+  if (s.col != null) gw.insertAdjacentHTML('beforeend','<div class="band" style="top:-6px;left:'+(s.col*66-6)+'px;height:474px;width:78px"></div>');
+  (s.tags||[]).forEach(function(t){ var y=Math.floor(t[0]/N), x=t[0]%N; gw.insertAdjacentHTML('beforeend','<div class="tag" style="left:'+(x>=5?x*66-62:x*66+40)+'px;top:'+(y*66-30)+'px">'+t[1]+'</div>'); });
+  var side = '';
+  if (s.side === 'win') side = '<div class="win">Solved in 1:42. A new Zones arrives tomorrow.</div><div class="board"><b style="font-size:14px;letter-spacing:.06em;color:#5C5F66">FASTEST IN YOUR TEAM TODAY</b><div><span>1. Neha</span><b>1:05</b></div><div><span>2. You</span><b>1:42</b></div><div><span>3. Rahul</span><b>2:10</b></div></div>';
+  else {
+    side = RULES.map(function(r,k){ return '<div class="rule'+(k < (s.rules||0)?' on':'')+(k===s.ruleNow?' now':'')+'"><span class="num">'+(k+1)+'</span><span><b>'+r[0]+'</b><span style="font-size:17px;color:#5C5F66">'+r[1]+'</span></span></div>'; }).join('');
+    side += '<div class="btns" style="margin-top:6px"><span class="btn'+(s.cursor==='hint'&&s.click?' press':'')+'" id="hintBtn">Hint</span><span class="btn">Clear</span>'+(s.penalty?'<span class="badge">+15 seconds</span>':'')+'</div>';
+  }
+  document.getElementById('side').innerHTML = side;
+  document.getElementById('cap').textContent = s.cap || '';
+  if (s.cursor != null) {
+    var cx, cy;
+    if (s.cursor === 'hint') { var hb = document.getElementById('hintBtn').getBoundingClientRect(), gr = gw.getBoundingClientRect(); cx = hb.left - gr.left + hb.width/2; cy = hb.top - gr.top + hb.height/2; }
+    else { cx = (s.cursor%N)*66+33; cy = Math.floor(s.cursor/N)*66+33; }
+    if (s.click) gw.insertAdjacentHTML('beforeend','<div class="ripple" style="left:'+cx+'px;top:'+cy+'px"></div>');
+    gw.insertAdjacentHTML('beforeend','<svg class="cursor" style="left:'+(cx-4)+'px;top:'+(cy-2)+'px" viewBox="0 0 24 24"><path d="M3 2 L3 20 L8 15 L11.5 22 L14.5 20.5 L11 13.5 L18 13.5 Z" fill="#fff" stroke="#1B1F24" stroke-width="1.6" stroke-linejoin="round"/></svg>');
+  }
+};
+</script></body></html>
